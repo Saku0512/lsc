@@ -2,11 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/syscall.h>
 #include <linux/types.h>
 #include <errno.h>
 #include <string.h>
 #include <fcntl.h>
+#include "lsc_syscall.h"
 
 #define BUF_SIZE 1024
 
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     struct entry_list entries = {0};
 
     for(;;) {
-        int nread = syscall(SYS_getdents64, fd, buf, BUF_SIZE);
+        int nread = (int)lsc_syscall3(LSC_SYS_GETDENTS64, fd, (long)buf, BUF_SIZE);
 
         if (nread == -1) {
             perror("getdents64");

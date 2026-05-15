@@ -2,6 +2,7 @@ CC := gcc
 CFLAGS := -Wall -Wextra -O2
 TARGET := lsc
 SRC := main.c
+HDR := lsc_syscall.h
 PREFIX ?= /usr/local
 BINDIR := $(PREFIX)/bin
 
@@ -9,7 +10,7 @@ BINDIR := $(PREFIX)/bin
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
+$(TARGET): $(SRC) $(HDR)
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 install: $(TARGET)
