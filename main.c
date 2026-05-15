@@ -1,11 +1,7 @@
 #define _GNU_SOURCE
-#include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <linux/types.h>
-#include <errno.h>
 #include <string.h>
-#include <fcntl.h>
 #include "lsc_syscall.h"
 
 #define BUF_SIZE 1024
@@ -76,6 +72,23 @@ static void free_entries(struct entry_list *entries) {
     free(entries->names);
 }
 
+static void write_all(int fd, const char *buf, size_t len) {
+    while (len > 0) {
+        long written = lsc_write(fd, buf, (long)len);
+
+        if (written <= 0) {
+            return;
+        }
+
+        buf += written;
+        len -= (size_t)written;
+    }
+}
+
+static void write_str(int fd, const char *str) {
+    write_all(fd, str, strlen(str));
+}
+
 int main(int argc, char *argv[]) {
     const char *path = ".";
 
@@ -84,9 +97,11 @@ int main(int argc, char *argv[]) {
         path = argv[1];
     }
 
-    int fd = open(path, O_RDONLY | O_DIRECTORY);
-    if (fd == -1) {
-        fprintf(stderr, "open: %s: %s\n", path, strerror(errno));
+    long fd = lsc_open_dir(path);
+    if (fd < 0) {
+        write_str(LSC_STDERR, "lsc: cannot open ");
+        write_str(LSC_STDERR, path);
+        write_str(LSC_STDERR, "\n");
         return -1;
     }
 
@@ -94,11 +109,11 @@ int main(int argc, char *argv[]) {
     struct entry_list entries = {0};
 
     for(;;) {
-        int nread = (int)lsc_syscall3(LSC_SYS_GETDENTS64, fd, (long)buf, BUF_SIZE);
+        long nread = lsc_getdents64((int)fd, buf, BUF_SIZE);
 
-        if (nread == -1) {
-            perror("getdents64");
-            close(fd);
+        if (nread < 0) {
+            write_str(LSC_STDERR, "lsc: getdents64 failed\n");
+            lsc_close((int)fd);
             free_entries(&entries);
             return -1;
         }
@@ -113,8 +128,8 @@ int main(int argc, char *argv[]) {
             struct linux_dirent64 *d = (struct linux_dirent64 *)(buf + bpos);
 
             if (add_entry(&entries, d->d_name) == -1) {
-                perror("add_entry");
-                close(fd);
+                write_str(LSC_STDERR, "lsc: out of memory\n");
+                lsc_close((int)fd);
                 free_entries(&entries);
                 return -1;
             }
@@ -126,10 +141,11 @@ int main(int argc, char *argv[]) {
     qsort(entries.names, entries.len, sizeof(*entries.names), compare_entries);
 
     for (size_t i = 0; i < entries.len; i++) {
-        printf("%s\n", entries.names[i]);
+        write_str(LSC_STDOUT, entries.names[i]);
+        write_str(LSC_STDOUT, "\n");
     }
 
-    close(fd);
+    lsc_close((int)fd);
     free_entries(&entries);
 
     return 0;
