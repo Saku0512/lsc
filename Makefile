@@ -1,8 +1,14 @@
 CC := gcc
 CFLAGS := -Wall -Wextra -O2
+
 TARGET := lsc
-SRC := main.c
+
+C_SRC := main.c
+ASM_SRC := lsc_syscall.S
 HDR := lsc_syscall.h
+
+OBJ := $(C_SRC:.c=.o) $(ASM_SRC:.S=.o)
+
 PREFIX ?= /usr/local
 BINDIR := $(PREFIX)/bin
 
@@ -10,8 +16,14 @@ BINDIR := $(PREFIX)/bin
 
 all: $(TARGET)
 
-$(TARGET): $(SRC) $(HDR)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $@ $(OBJ)
+
+main.o: main.c $(HDR)
+	$(CC) $(CFLAGS) -c -o $@ main.c
+
+lsc_syscall.o: lsc_syscall.S
+	$(CC) $(CFLAGS) -c -o $@ lsc_syscall.S
 
 install: $(TARGET)
 	mkdir -p "$(BINDIR)"
@@ -21,4 +33,4 @@ run: $(TARGET)
 	./$(TARGET)
 
 clean:
-	rm -f $(TARGET)
+	rm -rf $(TARGET) $(OBJ)
