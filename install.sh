@@ -3,9 +3,14 @@ set -eu
 
 PROG="lsc"
 DEFAULT_PREFIX="/usr/local"
+
 SOURCE_URL="https://raw.githubusercontent.com/Saku0512/lsc/main/main.c"
+
 SYSCALL_HEADER="lsc_syscall.h"
 SYSCALL_HEADER_URL="https://raw.githubusercontent.com/Saku0512/lsc/main/${SYSCALL_HEADER}"
+
+SYSCALL_ASM="lsc_syscall.S"
+SYSCALL_ASM_URL="https://raw.githubusercontent.com/Saku0512/lsc/main/${SYSCALL_ASM}"
 
 usage() {
     cat <<EOF
@@ -76,6 +81,11 @@ if [ ! -f "${SYSCALL_HEADER}" ]; then
     download_file "${SYSCALL_HEADER_URL}" "${SYSCALL_HEADER}"
 fi
 
+if [ ! -f "${SYSCALL_ASM}" ]; then
+    echo "Downloading syscall assembly..."
+    download_file "${SYSCALL_ASM_URL}" "${SYSCALL_ASM}"
+fi
+
 if ! command -v gcc >/dev/null 2>&1; then
     echo "Error: gcc is required to build ${PROG}." >&2
     exit 1
@@ -87,13 +97,16 @@ fi
 
 BUILD_DIR=".build"
 mkdir -p "${BUILD_DIR}"
-gcc -Wall -Wextra -O2 -o "${BUILD_DIR}/${PROG}" main.c
+
+gcc -Wall -Wextra -O2 -o "${BUILD_DIR}/${PROG}" main.c "${SYSCALL_ASM}"
 
 install_dir="${PREFIX}/bin"
 mkdir -p "${install_dir}"
 install -m 755 "${BUILD_DIR}/${PROG}" "${install_dir}/${PROG}"
 
 echo "${PROG} installed to ${install_dir}/${PROG}"
+
 if [ "${install_dir}" != "/usr/local/bin" ] && [ "${install_dir}" != "/usr/bin" ]; then
     echo "Add ${install_dir} to PATH if it is not already available."
 fi
+
